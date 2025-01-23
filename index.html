@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Website Authority Score Finder</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        textarea { width: 100%; height: 150px; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        button { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Website Authority Score Finder</h1>
+    <textarea id="urlInput" placeholder="Enter URLs (one per line)"></textarea>
+    <button onclick="fetchAuthorityScrores()">Get Authority Scores</button>
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>Site</th>
+                <th>Authority Score</th>
+            </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+    </table>
+
+    <script>
+        async function fetchSiteData(site) {
+            try {
+                const response = await fetch('https://api.backlinko.com/wp/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json',
+                        'origin': 'https://backlinko.com',
+                        'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36'
+                    },
+                    body: JSON.stringify({
+                        query: `query { semrushAPI { 
+                            backlinksOverview(target: "${site}") {
+                                ascore
+                            }
+                        } }`
+                    })
+                });
+
+                const jsonResponse = await response.json();
+                const ascore = jsonResponse?.data?.semrushAPI?.backlinksOverview?.ascore;
+                return { site, authority: ascore };
+            } catch (error) {
+                console.error(`Error fetching data for ${site}:`, error);
+                return { site, authority: null };
+            }
+        }
+
+        async function fetchAuthorityScrores() {
+            const urlInput = document.getElementById('urlInput');
+            const resultsBody = document.getElementById('resultsBody');
+            
+            // Clear previous results
+            resultsBody.innerHTML = '';
+
+            // Split input into sites, trim whitespace
+            const sites = urlInput.value.split('\n')
+                .map(site => site.trim())
+                .filter(site => site !== '');
+
+            for (const site of sites) {
+                const data = await fetchSiteData(site);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${data.site}</td>
+                    <td>${data.authority || 'N/A'}</td>
+                `;
+                resultsBody.appendChild(row);
+            }
+        }
+    </script>
+</body>
+</html>
